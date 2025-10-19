@@ -1,0 +1,588 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web Teleprompter</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #000;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        #controls {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(30, 30, 30, 0.95);
+            padding: 15px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            z-index: 1000;
+            border-top: 2px solid #444;
+        }
+
+        .control-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        label {
+            font-size: 14px;
+            font-weight: bold;
+            color: #ccc;
+        }
+
+        input[type="range"] {
+            width: 150px;
+            cursor: pointer;
+        }
+
+        .value-display {
+            min-width: 60px;
+            text-align: center;
+            background-color: #444;
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        button {
+            padding: 10px 20px;
+            font-size: 14px;
+            font-weight: bold;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        #playPauseBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #playPauseBtn:hover {
+            background-color: #45a049;
+        }
+
+        #playPauseBtn.playing {
+            background-color: #f44336;
+        }
+
+        #playPauseBtn.playing:hover {
+            background-color: #da190b;
+        }
+
+        #resetBtn {
+            background-color: #2196F3;
+            color: white;
+        }
+
+        #resetBtn:hover {
+            background-color: #0b7dda;
+        }
+
+        #teleprompter-container {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 100px;
+            overflow: hidden;
+        }
+
+        #teleprompter {
+            padding: 50px 80px;
+            line-height: 1.8;
+            text-align: center;
+            position: relative;
+            top: 0;
+            transition: top 0.1s linear;
+        }
+
+        #text-input-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            background-color: rgba(30, 30, 30, 0.95);
+            border-bottom: 2px solid #444;
+            z-index: 1000;
+        }
+
+        #textInput {
+            width: 100%;
+            height: 150px;
+            padding: 15px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            font-size: 16px;
+            font-family: Arial, sans-serif;
+            resize: none;
+        }
+
+        #textInput::placeholder {
+            color: #888;
+        }
+
+        .center-line {
+            position: fixed;
+            top: 40vh;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background-color: rgba(255, 255, 255, 0.3);
+            pointer-events: none;
+            z-index: 999;
+        }
+
+        .toggle-input-btn {
+            background-color: #FF9800;
+            color: white;
+        }
+
+        .toggle-input-btn:hover {
+            background-color: #e68900;
+        }
+
+        #text-input-container.hidden {
+            display: none;
+        }
+
+        #video-container {
+            position: fixed;
+            bottom: 110px;
+            right: 20px;
+            z-index: 1001;
+            background-color: rgba(30, 30, 30, 0.95);
+            border: 2px solid #444;
+            border-radius: 8px;
+            padding: 10px;
+        }
+
+        #video-container.hidden {
+            display: none;
+        }
+
+        #cameraPreview {
+            width: 280px;
+            height: 210px;
+            background-color: #000;
+            border-radius: 4px;
+            display: block;
+            transform: scaleX(-1); /* Mirror the preview */
+        }
+
+        #video-controls {
+            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        #recordBtn {
+            background-color: #f44336;
+            color: white;
+        }
+
+        #recordBtn:hover {
+            background-color: #da190b;
+        }
+
+        #recordBtn.recording {
+            background-color: #ff5722;
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+
+        #downloadBtn {
+            background-color: #4CAF50;
+            color: white;
+        }
+
+        #downloadBtn:hover {
+            background-color: #45a049;
+        }
+
+        #downloadBtn:disabled {
+            background-color: #666;
+            cursor: not-allowed;
+            opacity: 0.5;
+        }
+
+        #cameraSelect {
+            padding: 8px;
+            background-color: #444;
+            color: #fff;
+            border: 1px solid #666;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .toggle-camera-btn {
+            background-color: #9C27B0;
+            color: white;
+        }
+
+        .toggle-camera-btn:hover {
+            background-color: #7B1FA2;
+        }
+
+        .recording-indicator {
+            color: #ff5722;
+            font-weight: bold;
+            font-size: 12px;
+            text-align: center;
+            display: none;
+        }
+
+        .recording-indicator.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div id="controls">
+        <div class="control-group">
+            <button id="playPauseBtn">▶ Start</button>
+            <button id="resetBtn">↺ Reset</button>
+            <button id="toggleInputBtn" class="toggle-input-btn">Hide Input</button>
+            <button id="toggleCameraBtn" class="toggle-camera-btn">📹 Show Camera</button>
+        </div>
+
+        <div class="control-group">
+            <label for="speedControl">Speed:</label>
+            <input type="range" id="speedControl" min="1" max="100" value="30">
+            <span class="value-display" id="speedValue">30</span>
+        </div>
+
+        <div class="control-group">
+            <label for="fontSizeControl">Font Size:</label>
+            <input type="range" id="fontSizeControl" min="16" max="100" value="36">
+            <span class="value-display" id="fontSizeValue">36px</span>
+        </div>
+    </div>
+
+    <div class="center-line"></div>
+
+    <div id="teleprompter-container">
+        <div id="teleprompter">
+            <p>Welcome to the Web Teleprompter!</p>
+            <p>Enter your script in the text box below, then click Start to begin scrolling.</p>
+            <p>Use the speed slider to control how fast the text scrolls.</p>
+            <p>Use the font size slider to adjust text size.</p>
+            <p>Press spacebar to play/pause, or click the Start button.</p>
+        </div>
+    </div>
+
+    <div id="text-input-container">
+        <textarea id="textInput" placeholder="Enter your teleprompter script here... Each paragraph will be displayed separately. Click 'Hide Input' to focus on reading."></textarea>
+    </div>
+
+    <div id="video-container" class="hidden">
+        <video id="cameraPreview" autoplay muted playsinline></video>
+        <div id="video-controls">
+            <select id="cameraSelect">
+                <option value="">Select Camera...</option>
+            </select>
+            <div class="recording-indicator" id="recordingIndicator">⬤ RECORDING</div>
+            <button id="recordBtn">● Start Recording</button>
+            <button id="downloadBtn" disabled>⬇ Download Video</button>
+        </div>
+    </div>
+
+    <script>
+        const teleprompter = document.getElementById('teleprompter');
+        const textInput = document.getElementById('textInput');
+        const playPauseBtn = document.getElementById('playPauseBtn');
+        const resetBtn = document.getElementById('resetBtn');
+        const toggleInputBtn = document.getElementById('toggleInputBtn');
+        const toggleCameraBtn = document.getElementById('toggleCameraBtn');
+        const speedControl = document.getElementById('speedControl');
+        const fontSizeControl = document.getElementById('fontSizeControl');
+        const speedValue = document.getElementById('speedValue');
+        const fontSizeValue = document.getElementById('fontSizeValue');
+        const textInputContainer = document.getElementById('text-input-container');
+        const videoContainer = document.getElementById('video-container');
+        const cameraPreview = document.getElementById('cameraPreview');
+        const cameraSelect = document.getElementById('cameraSelect');
+        const recordBtn = document.getElementById('recordBtn');
+        const downloadBtn = document.getElementById('downloadBtn');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+
+        let isPlaying = false;
+        let currentPosition = 0;
+        let animationId = null;
+        let speed = 30;
+        let fontSize = 36;
+
+        // Video recording variables
+        let mediaStream = null;
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let isRecording = false;
+
+        // Update teleprompter text
+        function updateText() {
+            const text = textInput.value;
+            if (text.trim() === '') {
+                teleprompter.innerHTML = '<p>Enter your script in the text box below...</p>';
+            } else {
+                const paragraphs = text.split('\n').filter(p => p.trim() !== '');
+                teleprompter.innerHTML = paragraphs.map(p => `<p>${p}</p>`).join('');
+            }
+        }
+
+        // Animation loop
+        function scroll() {
+            if (!isPlaying) return;
+
+            currentPosition += speed / 30;
+            teleprompter.style.top = `-${currentPosition}px`;
+
+            animationId = requestAnimationFrame(scroll);
+        }
+
+        // Play/Pause
+        function togglePlayPause() {
+            isPlaying = !isPlaying;
+
+            if (isPlaying) {
+                playPauseBtn.textContent = '⏸ Pause';
+                playPauseBtn.classList.add('playing');
+                scroll();
+            } else {
+                playPauseBtn.textContent = '▶ Start';
+                playPauseBtn.classList.remove('playing');
+                if (animationId) {
+                    cancelAnimationFrame(animationId);
+                }
+            }
+        }
+
+        // Reset position
+        function reset() {
+            isPlaying = false;
+            currentPosition = 0;
+            teleprompter.style.top = '0px';
+            playPauseBtn.textContent = '▶ Start';
+            playPauseBtn.classList.remove('playing');
+            if (animationId) {
+                cancelAnimationFrame(animationId);
+            }
+        }
+
+        // Update speed
+        function updateSpeed() {
+            speed = parseInt(speedControl.value);
+            speedValue.textContent = speed;
+        }
+
+        // Update font size
+        function updateFontSize() {
+            fontSize = parseInt(fontSizeControl.value);
+            fontSizeValue.textContent = fontSize + 'px';
+            teleprompter.style.fontSize = fontSize + 'px';
+        }
+
+        // Toggle input visibility
+        function toggleInput() {
+            textInputContainer.classList.toggle('hidden');
+            if (textInputContainer.classList.contains('hidden')) {
+                toggleInputBtn.textContent = 'Show Input';
+            } else {
+                toggleInputBtn.textContent = 'Hide Input';
+            }
+        }
+
+        // Get available cameras
+        async function getCameras() {
+            try {
+                const devices = await navigator.mediaDevices.enumerateDevices();
+                const videoDevices = devices.filter(device => device.kind === 'videoinput');
+
+                cameraSelect.innerHTML = '<option value="">Select Camera...</option>';
+                videoDevices.forEach((device, index) => {
+                    const option = document.createElement('option');
+                    option.value = device.deviceId;
+                    option.text = device.label || `Camera ${index + 1}`;
+                    cameraSelect.appendChild(option);
+                });
+
+                // Auto-select first camera if available
+                if (videoDevices.length > 0) {
+                    cameraSelect.value = videoDevices[0].deviceId;
+                    await startCamera(videoDevices[0].deviceId);
+                }
+            } catch (error) {
+                console.error('Error getting cameras:', error);
+                alert('Unable to access cameras. Please ensure camera permissions are granted.');
+            }
+        }
+
+        // Start camera preview
+        async function startCamera(deviceId) {
+            try {
+                // Stop existing stream if any
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                }
+
+                const constraints = {
+                    video: deviceId ? { deviceId: { exact: deviceId } } : true,
+                    audio: true
+                };
+
+                mediaStream = await navigator.mediaDevices.getUserMedia(constraints);
+                cameraPreview.srcObject = mediaStream;
+            } catch (error) {
+                console.error('Error starting camera:', error);
+                alert('Unable to start camera. Please check permissions and try again.');
+            }
+        }
+
+        // Toggle camera visibility
+        async function toggleCamera() {
+            videoContainer.classList.toggle('hidden');
+            if (videoContainer.classList.contains('hidden')) {
+                toggleCameraBtn.textContent = '📹 Show Camera';
+                // Stop camera when hidden
+                if (mediaStream) {
+                    mediaStream.getTracks().forEach(track => track.stop());
+                    mediaStream = null;
+                }
+            } else {
+                toggleCameraBtn.textContent = '📹 Hide Camera';
+                await getCameras();
+            }
+        }
+
+        // Start/stop recording
+        function toggleRecording() {
+            if (!isRecording) {
+                startRecording();
+            } else {
+                stopRecording();
+            }
+        }
+
+        // Start recording
+        function startRecording() {
+            if (!mediaStream) {
+                alert('Please select a camera first.');
+                return;
+            }
+
+            recordedChunks = [];
+
+            try {
+                const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+                if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                    options.mimeType = 'video/webm;codecs=vp8,opus';
+                    if (!MediaRecorder.isTypeSupported(options.mimeType)) {
+                        options.mimeType = 'video/webm';
+                    }
+                }
+
+                mediaRecorder = new MediaRecorder(mediaStream, options);
+
+                mediaRecorder.ondataavailable = (event) => {
+                    if (event.data.size > 0) {
+                        recordedChunks.push(event.data);
+                    }
+                };
+
+                mediaRecorder.onstop = () => {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    downloadBtn.disabled = false;
+                    downloadBtn.onclick = () => downloadVideo(url);
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                recordBtn.textContent = '⬛ Stop Recording';
+                recordBtn.classList.add('recording');
+                recordingIndicator.classList.add('active');
+                downloadBtn.disabled = true;
+            } catch (error) {
+                console.error('Error starting recording:', error);
+                alert('Unable to start recording. Your browser may not support video recording.');
+            }
+        }
+
+        // Stop recording
+        function stopRecording() {
+            if (mediaRecorder && isRecording) {
+                mediaRecorder.stop();
+                isRecording = false;
+                recordBtn.textContent = '● Start Recording';
+                recordBtn.classList.remove('recording');
+                recordingIndicator.classList.remove('active');
+            }
+        }
+
+        // Download recorded video
+        function downloadVideo(url) {
+            const a = document.createElement('a');
+            a.style.display = 'none';
+            a.href = url;
+            a.download = `teleprompter-recording-${Date.now()}.webm`;
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+                URL.revokeObjectURL(url);
+            }, 100);
+        }
+
+        // Handle camera selection change
+        cameraSelect.addEventListener('change', async (e) => {
+            if (e.target.value) {
+                await startCamera(e.target.value);
+            }
+        });
+
+        // Event listeners
+        playPauseBtn.addEventListener('click', togglePlayPause);
+        resetBtn.addEventListener('click', reset);
+        toggleInputBtn.addEventListener('click', toggleInput);
+        toggleCameraBtn.addEventListener('click', toggleCamera);
+        recordBtn.addEventListener('click', toggleRecording);
+        speedControl.addEventListener('input', updateSpeed);
+        fontSizeControl.addEventListener('input', updateFontSize);
+        textInput.addEventListener('input', updateText);
+
+        // Spacebar to play/pause
+        document.addEventListener('keydown', (e) => {
+            if (e.code === 'Space' && e.target !== textInput) {
+                e.preventDefault();
+                togglePlayPause();
+            }
+        });
+
+        // Initialize
+        updateSpeed();
+        updateFontSize();
+        updateText();
+    </script>
+</body>
+</html>
